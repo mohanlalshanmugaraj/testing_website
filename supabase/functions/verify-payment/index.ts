@@ -1,8 +1,6 @@
 // Supabase Edge Function: verify-payment
-// Runtime: Deno / TypeScript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Runtime: Deno / TypeScript (Native Deno.serve & Web Crypto API)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface VerifyPaymentBody {
@@ -12,7 +10,7 @@ interface VerifyPaymentBody {
   razorpaySignature: string;
 }
 
-// Compute HMAC SHA256 signature in hexadecimal
+// Compute HMAC SHA256 signature in hexadecimal using global Web Crypto API
 async function generateSignature(data: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
@@ -28,7 +26,7 @@ async function generateSignature(data: string, secret: string): Promise<string> 
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -125,7 +123,6 @@ serve(async (req: Request) => {
     if (order.order_items && Array.isArray(order.order_items)) {
       for (const item of order.order_items) {
         if (item.product_id) {
-          // Decrement stock quantity safely
           const { data: currentProduct } = await supabase
             .from("products")
             .select("stock_quantity")

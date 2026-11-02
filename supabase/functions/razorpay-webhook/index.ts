@@ -1,8 +1,6 @@
 // Supabase Edge Function: razorpay-webhook
-// Runtime: Deno / TypeScript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Runtime: Deno / TypeScript (Native Deno.serve & Web Crypto API)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 async function verifyWebhookSignature(rawBody: string, signature: string, secret: string): Promise<boolean> {
@@ -21,7 +19,7 @@ async function verifyWebhookSignature(rawBody: string, signature: string, secret
   return expectedSignature === signature;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -41,7 +39,6 @@ serve(async (req: Request) => {
       return new Response("Missing Razorpay signature header", { status: 400 });
     }
 
-    // Read raw body for exact signature verification
     const rawBody = await req.text();
     const isValid = await verifyWebhookSignature(rawBody, signature, webhookSecret);
 
@@ -62,7 +59,6 @@ serve(async (req: Request) => {
       const paymentId = payment.id;
 
       if (razorpayOrderId) {
-        // Find corresponding order
         const { data: order } = await supabase
           .from("orders")
           .select("id, payment_status")
