@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Calendar, Clock, ArrowRight, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Package, Calendar, Clock, ArrowRight, AlertCircle, ShoppingBag, Search } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -11,24 +11,82 @@ export const MyOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lookupId, setLookupId] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      fetchMyOrders();
-    }
+    fetchOrders();
   }, [user]);
 
-  const fetchMyOrders = async () => {
+  const fetchOrders = async () => {
     setLoading(true);
     setErrorMsg(null);
 
-    if (!isSupabaseConfigured || !user) {
+    if (!isSupabaseConfigured) {
       setLoading(false);
       return;
     }
 
     try {
-      // Query customer's own orders with related items
+      // 1. Check guest order IDs saved in localStorage
+      let guestOrderIds: string[] = [];
+      try {
+        guestOrderIds = JSON.parse(localStorage.getItem('aura_guest_orders') || '[]');
+      } catch (e) {
+        guestOrderIds = [];
+      }
+
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            id,
+            product_id,
+            product_name_snapshot,
+            quantity,
+            unit_price,
+            subtotal,
+            created_at
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (user) {
+        if (guestOrderIds.length > 0) {
+          query = query.or(`user_id.eq.${user.id},id.in.(${guestOrderIds.join(',')})`);
+        } else {
+          query = query.eq('user_id', user.id);
+        }
+      } else if (guestOrderIds.length > 0) {
+        query = query.in('id', guestOrderIds);
+      } else {
+        // No orders yet for this guest
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (err: any) {
+      console.error('Error fetching orders:', err);
+      setErrorMsg(err.message || 'Failed to retrieve order records.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupId.trim()) return;
+
+    setIsSearching(true);
+    setErrorMsg(null);
+    try {
+      // Look up order by exact ID or partial ID prefix
+      const cleanId = lookupId.trim();
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -43,16 +101,20 @@ export const MyOrdersPage: React.FC = () => {
             created_at
           )
         `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .ilike('id', `${cleanId}%`)
+        .limit(5);
 
       if (error) throw error;
-      setOrders(data || []);
+
+      if (!data || data.length === 0) {
+        setErrorMsg(`No order found matching "${cleanId}". Please check the ID and try again.`);
+      } else {
+        setOrders(data);
+      }
     } catch (err: any) {
-      console.error('Error fetching my orders:', err);
-      setErrorMsg(err.message || 'Failed to retrieve order history.');
+      setErrorMsg('Lookup error: ' + err.message);
     } finally {
-      setLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -70,16 +132,10 @@ export const MyOrdersPage: React.FC = () => {
             Payment Failed
           </span>
         );
-      case 'Refunded':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-            Refunded
-          </span>
-        );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
-            Pending Payment
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+            {status}
           </span>
         );
     }
@@ -123,19 +179,42 @@ export const MyOrdersPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 font-display">My Orders</h1>
-          <p className="text-xs text-slate-500 mt-1">Track past orders and delivery milestones</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 font-display">Track Customer Orders</h1>
+          <p className="text-xs text-slate-500 mt-1">Review orders placed as guest or track by Order ID</p>
         </div>
         <Link
-          to="/"
+          to="/customer"
           className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
         >
           <span>Continue Shopping</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
+
+      {/* Quick Lookup Bar */}
+      <form onSubmit={handleLookup} className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-8 flex flex-col sm:flex-row gap-3 items-center">
+        <div className="relative flex-1 w-full">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <Search className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by Order ID (e.g. 7c9e6679...)"
+            value={lookupId}
+            onChange={(e) => setLookupId(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={isSearching}
+          className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {isSearching ? 'Searching...' : 'Find Order'}
+        </button>
+      </form>
 
       {errorMsg && (
         <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 mb-6 flex items-start gap-3 text-rose-700 text-sm">
@@ -146,23 +225,23 @@ export const MyOrdersPage: React.FC = () => {
 
       {loading ? (
         <div className="py-20">
-          <LoadingSpinner size="lg" text="Fetching your orders from database..." />
+          <LoadingSpinner size="lg" text="Fetching orders..." />
         </div>
       ) : orders.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center max-w-lg mx-auto space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
             <Package className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900 font-display">No Orders Yet</h3>
+          <h3 className="text-xl font-bold text-slate-900 font-display">No Orders Found</h3>
           <p className="text-sm text-slate-500">
-            You haven't placed any orders yet. Select a product from our catalog to place your first test order!
+            You haven't placed any test orders yet, or no orders match your search.
           </p>
           <Link
-            to="/"
+            to="/customer"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm"
           >
             <ShoppingBag className="w-4 h-4" />
-            Start Shopping
+            Explore Catalog
           </Link>
         </div>
       ) : (

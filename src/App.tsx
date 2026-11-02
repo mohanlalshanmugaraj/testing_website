@@ -1,31 +1,27 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
-// Customer Pages
+// Customer Pages (No login required)
 import { HomePage } from './pages/customer/HomePage';
 import { ProductDetailPage } from './pages/customer/ProductDetailPage';
 import { CartPage } from './pages/customer/CartPage';
 import { CheckoutPage } from './pages/customer/CheckoutPage';
 import { MyOrdersPage } from './pages/customer/MyOrdersPage';
 
-// Auth Pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { SignupPage } from './pages/auth/SignupPage';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
-
-// Admin Pages
+// Admin Pages (Login only)
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
 import { AdminProductFormPage } from './pages/admin/AdminProductFormPage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 
-// Customer Shell Layout
+// Customer Layout Shell
 const CustomerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -36,15 +32,30 @@ const CustomerLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =
   );
 };
 
+// Admin Root Redirect Helper
+const AdminRootRedirect: React.FC = () => {
+  const { user, profile, loading } = useAuth();
+  if (loading) return null;
+  if (user && profile?.role === 'admin') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return <Navigate to="/admin/login" replace />;
+};
+
 export const App: React.FC = () => {
   return (
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
           <Routes>
-            {/* Customer Facing Routes */}
+            {/* Root redirects to /customer */}
+            <Route path="/" element={<Navigate to="/customer" replace />} />
+
+            {/* ============================================================== */}
+            {/* CUSTOMER STOREFRONT (No login required)                         */}
+            {/* ============================================================== */}
             <Route
-              path="/"
+              path="/customer"
               element={
                 <CustomerLayout>
                   <HomePage />
@@ -52,7 +63,7 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="/product/:id"
+              path="/customer/product/:id"
               element={
                 <CustomerLayout>
                   <ProductDetailPage />
@@ -60,7 +71,12 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="/cart"
+              path="/product/:id"
+              element={<Navigate to="/customer" replace />}
+            />
+
+            <Route
+              path="/customer/cart"
               element={
                 <CustomerLayout>
                   <CartPage />
@@ -68,53 +84,46 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="/checkout"
+              path="/cart"
+              element={<Navigate to="/customer/cart" replace />}
+            />
+
+            <Route
+              path="/customer/checkout"
               element={
                 <CustomerLayout>
-                  <ProtectedRoute>
-                    <CheckoutPage />
-                  </ProtectedRoute>
+                  <CheckoutPage />
+                </CustomerLayout>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={<Navigate to="/customer/checkout" replace />}
+            />
+
+            <Route
+              path="/customer/orders"
+              element={
+                <CustomerLayout>
+                  <MyOrdersPage />
                 </CustomerLayout>
               }
             />
             <Route
               path="/my-orders"
-              element={
-                <CustomerLayout>
-                  <ProtectedRoute>
-                    <MyOrdersPage />
-                  </ProtectedRoute>
-                </CustomerLayout>
-              }
+              element={<Navigate to="/customer/orders" replace />}
             />
 
-            {/* Auth Routes */}
-            <Route
-              path="/login"
-              element={
-                <CustomerLayout>
-                  <LoginPage />
-                </CustomerLayout>
-              }
-            />
-            <Route
-              path="/signup"
-              element={
-                <CustomerLayout>
-                  <SignupPage />
-                </CustomerLayout>
-              }
-            />
-            <Route
-              path="/forgot-password"
-              element={
-                <CustomerLayout>
-                  <ForgotPasswordPage />
-                </CustomerLayout>
-              }
-            />
+            {/* ============================================================== */}
+            {/* ADMIN SECTION (Login only)                                     */}
+            {/* ============================================================== */}
+            {/* /admin redirects to /admin/dashboard or /admin/login */}
+            <Route path="/admin" element={<AdminRootRedirect />} />
 
-            {/* Admin Management Routes (Protected by Admin Role) */}
+            {/* Admin Login page */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+
+            {/* Protected Admin Console */}
             <Route
               path="/admin"
               element={
@@ -123,15 +132,15 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AdminDashboardPage />} />
+              <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="products" element={<AdminProductsPage />} />
               <Route path="products/new" element={<AdminProductFormPage />} />
               <Route path="products/:id/edit" element={<AdminProductFormPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
             </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Catch-all fallback -> /customer */}
+            <Route path="*" element={<Navigate to="/customer" replace />} />
           </Routes>
         </BrowserRouter>
       </CartProvider>

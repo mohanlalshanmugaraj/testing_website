@@ -63,7 +63,7 @@ export interface ShippingAddress {
 
 export interface Order {
   id: string;
-  user_id: string;
+  user_id: string | null;
   total_amount: number;
   order_status: OrderStatus;
   payment_status: PaymentStatus;

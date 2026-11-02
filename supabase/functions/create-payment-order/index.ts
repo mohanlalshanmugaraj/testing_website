@@ -1,5 +1,5 @@
 // Supabase Edge Function: create-payment-order
-// Runtime: Deno / TypeScript (Native Deno.serve)
+// Runtime: Deno / TypeScript (Supports Guest Checkout without Login)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -29,24 +29,17 @@ Deno.serve(async (req: Request) => {
       throw new Error("Razorpay credentials are missing on the Edge Function environment.");
     }
 
-    // 2. Authenticate the caller
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization token." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized user session." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // 2. Optional caller authentication (Guest checkout supported: no login required)
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        userId = user.id;
+      }
     }
 
     // 3. Parse and validate body
@@ -138,11 +131,11 @@ Deno.serve(async (req: Request) => {
 
     const rzpOrder = await rzpResponse.json();
 
-    // 6. Record order in PostgreSQL
+    // 6. Record order in PostgreSQL (supports guest orders where user_id is null)
     const { data: insertedOrder, error: orderErr } = await supabase
       .from("orders")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         total_amount: calculatedTotal,
         order_status: "Pending",
         payment_status: "Pending",
@@ -171,7 +164,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to record order item snapshots: ${itemsErr.message}`);
     }
 
-    // Return sanitized response for client-side modal initiation
+    // Return response for client-side modal initiation
     return new Response(
       JSON.stringify({
         success: true,

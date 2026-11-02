@@ -27,7 +27,7 @@ export const CartPage: React.FC = () => {
         </p>
         <div className="pt-2">
           <Link
-            to="/"
+            to="/customer"
             className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -46,7 +46,7 @@ export const CartPage: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">Review your apparel items before checkout</p>
         </div>
         <Link
-          to="/"
+          to="/customer"
           className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -170,7 +170,7 @@ export const CartPage: React.FC = () => {
             </div>
 
             <button
-              onClick={() => navigate('/checkout')}
+              onClick={() => navigate('/customer/checkout')}
               className="w-full py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:shadow-indigo-600/50"
             >
               <span>Proceed to Checkout</span>

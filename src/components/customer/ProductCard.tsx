@@ -42,7 +42,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     <div className="group relative bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col">
       {/* Product Image */}
       <Link
-        to={`/product/${product.id}`}
+        to={`/customer/product/${product.id}`}
         className="relative block aspect-[4/5] overflow-hidden bg-slate-100"
       >
         <img
@@ -78,7 +78,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* Card Body */}
       <div className="p-4 flex flex-col flex-1">
-        <Link to={`/product/${product.id}`} className="block">
+        <Link to={`/customer/product/${product.id}`} className="block">
           <h3 className="font-semibold text-slate-900 text-base group-hover:text-indigo-600 transition-colors line-clamp-1">
             {product.name}
           </h3>

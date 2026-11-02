@@ -76,7 +76,7 @@ export const ProductDetailPage: React.FC = () => {
   const handleBuyNow = () => {
     if (!product || product.stock_quantity <= 0) return;
     addToCart(product, quantity);
-    navigate('/checkout');
+    navigate('/customer/checkout');
   };
 
   if (loading) {
@@ -98,7 +98,7 @@ export const ProductDetailPage: React.FC = () => {
           {errorMsg || 'The requested product could not be located in the catalog.'}
         </p>
         <Link
-          to="/"
+          to="/customer"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-600/20"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -115,7 +115,7 @@ export const ProductDetailPage: React.FC = () => {
       {/* Back button */}
       <div className="mb-6">
         <Link
-          to="/"
+          to="/customer"
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors uppercase tracking-wider"
         >
           <ArrowLeft className="w-4 h-4" />
