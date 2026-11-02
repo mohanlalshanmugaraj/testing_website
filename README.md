@@ -53,24 +53,31 @@ A complete, modern clothing e-commerce sample application built to test the end-
 
 ---
 
-## Application Modules & Features
+## Application Modules & Route Architecture
 
-### 1. Authentication & Security
-- **Email/Password Auth**: Login, Signup, Forgot Password, Session Persistence.
-- **Strict Role Isolation**: Public signup **always** assigns the `customer` role. Admin access cannot be self-selected from the client and is protected via database trigger guards.
-- **Row Level Security (RLS)**: Enforced across all tables (`profiles`, `products`, `product_images`, `orders`, `order_items`).
+### 1. Customer Storefront (`/customer`) – No Login Required
+- **Route**: `/customer`
+- **Catalog Browsing**: Mobile-first clothing catalog with category filters, search, and sorting without needing an account.
+- **Product Details & Multi-Image Gallery**: `/customer/product/:id`
+- **Shopping Cart**: `/customer/cart`
+- **Instant Guest Checkout**: `/customer/checkout` (Enter delivery details and pay directly via Razorpay Test Mode without logging in).
+- **Track Orders**: `/customer/orders` (Tracks guest orders via localStorage or search by Order ID).
 
-### 2. Customer Storefront
-- **Responsive Catalog**: Mobile-first clothing catalog with category filters, search, and sorting.
-- **Product Details & Gallery**: Multi-image interactive gallery, stock count, quantity selector.
-- **Cart & Server Guard**: Cart with price and inventory validation against PostgreSQL before checkout.
-- **Simulated Checkout**: Razorpay test modal with mock cards and UPI handles.
-- **My Orders**: Real-time order tracking, payment status badges, and line-item snapshots.
+### 2. Administrative Console (`/admin`) – Login Only
+- **Admin Entry**: `/admin` (Redirects to `/admin/dashboard` if authenticated, or `/admin/login` if not).
+- **Admin Login**: `/admin/login` (Exclusive administrator portal).
+- **Admin Dashboard**: `/admin/dashboard` (Live metrics: products, orders, customers, total revenue).
+- **Product Management**: `/admin/products` & `/admin/products/new` (CRUD with 5-image upload dropzone).
+- **Order Management**: `/admin/orders` (View delivery addresses, line items, update fulfillment stages).
 
-### 3. Administrative Console
-- **Live Metrics Dashboard**: Real-time counts of products, registered customers, total orders, successful payments, and total revenue in INR.
-- **Product Management**: Full CRUD, active/draft toggle, and multi-image upload dropzone (up to 5 images, max 5MB each, JPG/PNG/WebP).
-- **Order Management**: Comprehensive order log with delivery address, line item breakdown, payment status, and order status progression (`Pending`, `Confirmed`, `Processing`, `Shipped`, `Delivered`, `Cancelled`).
+---
+
+## Pre-Configured Admin Credentials (Test Lab)
+
+An administrator account has already been initialized and verified in your live database:
+- **Admin Portal**: `http://localhost:5173/admin/login`
+- **Email**: `admin@aura.test`
+- **Password**: `Admin@123456`
 
 ---
 
